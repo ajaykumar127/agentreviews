@@ -12,8 +12,10 @@ interface OAuthTokenResponse {
   error_description?: string;
 }
 
-// Salesforce CLI's default Connected App - available in all orgs
-const SF_CLI_CLIENT_ID = 'PlatformCLI';
+// Salesforce OAuth configuration
+// Use custom Connected App if available, otherwise fall back to CLI
+const SF_CLIENT_ID = process.env.SALESFORCE_CLIENT_ID || 'PlatformCLI';
+const SF_CLIENT_SECRET = process.env.SALESFORCE_CLIENT_SECRET;
 
 // Get redirect URI dynamically
 export function getRedirectUri(baseUrl?: string): string {
@@ -25,14 +27,14 @@ export function getRedirectUri(baseUrl?: string): string {
   if (process.env.NEXT_PUBLIC_APP_URL) {
     return `${process.env.NEXT_PUBLIC_APP_URL}/OauthRedirect`;
   }
-  // Default to localhost
+  // Default to localhost for development
   return 'http://localhost:1717/OauthRedirect';
 }
 
 export function getOAuthAuthorizeUrl(loginUrl: string, baseUrl?: string): string {
   const params = new URLSearchParams({
     response_type: 'code',
-    client_id: SF_CLI_CLIENT_ID,
+    client_id: SF_CLIENT_ID,
     redirect_uri: getRedirectUri(baseUrl),
   });
   return `${loginUrl}/services/oauth2/authorize?${params.toString()}`;
@@ -47,10 +49,15 @@ export async function exchangeCodeForSession(
 
   const params = new URLSearchParams({
     grant_type: 'authorization_code',
-    client_id: SF_CLI_CLIENT_ID,
+    client_id: SF_CLIENT_ID,
     redirect_uri: redirectUri,
     code,
   });
+
+  // Add client secret if available (required for web server flow with custom Connected App)
+  if (SF_CLIENT_SECRET) {
+    params.append('client_secret', SF_CLIENT_SECRET);
+  }
 
   const response = await fetch(tokenUrl, {
     method: 'POST',

@@ -60,35 +60,61 @@ export async function POST(request: NextRequest) {
     const userInfo = await conn.login(username, password);
 
     console.log('✓ Login successful');
-    console.log('User Info:', JSON.stringify(userInfo, null, 2));
-    console.log('Access Token exists:', !!conn.accessToken);
-    console.log('Instance URL:', conn.instanceUrl);
+    console.log('User Info received:', !!userInfo);
+    console.log('User ID:', userInfo?.id);
+    console.log('Org ID:', userInfo?.organizationId);
+    console.log('Connection state - Access Token:', !!conn.accessToken);
+    console.log('Connection state - Instance URL:', conn.instanceUrl);
+    console.log('Connection state - Session ID:', conn.sessionId ? 'exists' : 'missing');
+
+    // Extract session information - jsforce stores it in different places
+    const accessToken = conn.accessToken || conn.sessionId;
+    const instanceUrl = conn.instanceUrl;
+    const userId = userInfo?.id || userInfo?.userId;
+    const orgId = userInfo?.organizationId;
+
+    console.log('Extracted values:');
+    console.log('- accessToken:', !!accessToken);
+    console.log('- instanceUrl:', instanceUrl);
+    console.log('- userId:', userId);
+    console.log('- orgId:', orgId);
 
     // Verify we have the required session information
-    if (!conn.accessToken) {
-      throw new Error('Could not extract access token from login response');
+    if (!accessToken) {
+      console.error('ERROR: No access token or session ID found');
+      throw new Error('Could not extract access token from login response. Login succeeded but session data is missing.');
     }
 
-    if (!conn.instanceUrl) {
+    if (!instanceUrl) {
+      console.error('ERROR: No instance URL found');
       throw new Error('Could not extract instance URL from login response');
     }
 
-    if (!userInfo.id) {
+    if (!userId) {
+      console.error('ERROR: No user ID found');
       throw new Error('Could not extract user ID from login response');
     }
 
-    if (!userInfo.organizationId) {
+    if (!orgId) {
+      console.error('ERROR: No org ID found');
       throw new Error('Could not extract organization ID from login response');
     }
 
     // Create session object
     const session = {
-      accessToken: conn.accessToken,
-      instanceUrl: conn.instanceUrl,
+      accessToken: accessToken,
+      instanceUrl: instanceUrl,
       apiVersion: '61.0',
-      userId: userInfo.id,
-      orgId: userInfo.organizationId,
+      userId: userId,
+      orgId: orgId,
     };
+
+    console.log('Session created successfully:', {
+      hasToken: !!session.accessToken,
+      hasUrl: !!session.instanceUrl,
+      hasUserId: !!session.userId,
+      hasOrgId: !!session.orgId
+    });
 
     // Encrypt and set cookie
     const encryptedSession = encryptSession(session);
