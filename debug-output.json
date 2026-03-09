@@ -1,0 +1,96 @@
+{
+  "session": {
+    "instanceUrl": "https://pronto3-dev-ed.develop.my.salesforce.com",
+    "apiVersion": "61.0"
+  },
+  "results": {
+    "BotDefinition": {
+      "error": "sObject type 'BotDefinition' is not supported."
+    },
+    "Bot": {
+      "error": "sObject type 'BotDefinition' is not supported."
+    },
+    "BotVersion": {
+      "error": "sObject type 'BotVersion' is not supported."
+    },
+    "GenAiPlanner": {
+      "error": "\nDeveloperName, MasterLabel FROM GenAiPlanner LIMIT 10\n                                ^\nERROR at Row:1:Column:44\nsObject type 'GenAiPlanner' is not supported. If you are attempting to use a custom object, be sure to append the '__c' after the entity name. Please reference your WSDL or the describe call for the appropriate names."
+    },
+    "GenAiPlannerBundle": {
+      "count": 3,
+      "records": [
+        {
+          "attributes": {
+            "type": "GenAiPlannerDefinition",
+            "url": "/services/data/v61.0/tooling/sobjects/GenAiPlannerDefinition/16jam0000018QUbAAM"
+          },
+          "Id": "16jam0000018QUbAAM",
+          "DeveloperName": "EmployeeCopilotPlanner",
+          "MasterLabel": "EmployeeCopilotPlanner"
+        },
+        {
+          "attributes": {
+            "type": "GenAiPlannerDefinition",
+            "url": "/services/data/v61.0/tooling/sobjects/GenAiPlannerDefinition/16jam000001919BAAQ"
+          },
+          "Id": "16jam000001919BAAQ",
+          "DeveloperName": "granite_edvance_v1",
+          "MasterLabel": "granite edvance"
+        },
+        {
+          "attributes": {
+            "type": "GenAiPlannerDefinition",
+            "url": "/services/data/v61.0/tooling/sobjects/GenAiPlannerDefinition/16jam000001C39dAAC"
+          },
+          "Id": "16jam000001C39dAAC",
+          "DeveloperName": "Pronto_Customer_Service_Assistant_v1",
+          "MasterLabel": "Pronto Customer Service Assistant"
+        }
+      ]
+    },
+    "GenAiPlugin": {
+      "error": "\nDeveloperName, MasterLabel FROM GenAiPlugin LIMIT 10\n                                ^\nERROR at Row:1:Column:44\nsObject type 'GenAiPlugin' is not supported. If you are attempting to use a custom object, be sure to append the '__c' after the entity name. Please reference your WSDL or the describe call for the appropriate names."
+    },
+    "GenAiFunction": {
+      "error": "\nDeveloperName, MasterLabel FROM GenAiFunction LIMIT 10\n                                ^\nERROR at Row:1:Column:44\nsObject type 'GenAiFunction' is not supported. If you are attempting to use a custom object, be sure to append the '__c' after the entity name. Please reference your WSDL or the describe call for the appropriate names."
+    },
+    "GenAiPlannerFunctionDef": {
+      "error": "\nSELECT Id, DeveloperName, MasterLabel FROM\n           ^\nERROR at Row:1:Column:12\nNo such column 'DeveloperName' on entity 'GenAiPlannerFunctionDef'. If you are attempting to use a custom field, be sure to append the '__c' after the custom field name. Please reference your WSDL or the describe call for the appropriate names."
+    },
+    "GenAiPromptTemplate": {
+      "error": "sObject type 'GenAiPromptTemplate' is not supported."
+    },
+    "BotDefinition_SOQL": {
+      "count": 3,
+      "records": [
+        {
+          "attributes": {
+            "type": "BotDefinition",
+            "url": "/services/data/v61.0/sobjects/BotDefinition/0Xxam000000rJanCAE"
+          },
+          "Id": "0Xxam000000rJanCAE",
+          "DeveloperName": "Copilot_for_Salesforce",
+          "MasterLabel": "Agentforce (Default)"
+        },
+        {
+          "attributes": {
+            "type": "BotDefinition",
+            "url": "/services/data/v61.0/sobjects/BotDefinition/0Xxam000000rOVdCAM"
+          },
+          "Id": "0Xxam000000rOVdCAM",
+          "DeveloperName": "granite_edvance",
+          "MasterLabel": "granite edvance"
+        },
+        {
+          "attributes": {
+            "type": "BotDefinition",
+            "url": "/services/data/v61.0/sobjects/BotDefinition/0Xxam000000s1C1CAI"
+          },
+          "Id": "0Xxam000000s1C1CAI",
+          "DeveloperName": "Pronto_Customer_Service_Assistant",
+          "MasterLabel": "Pronto Customer Service Assistant"
+        }
+      ]
+    }
+  }
+}
