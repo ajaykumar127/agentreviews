@@ -8,13 +8,13 @@ type LoginMethod = 'oauth' | 'direct';
 
 export default function LoginForm() {
   const router = useRouter();
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>('oauth');
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('direct');
   const [envOption, setEnvOption] = useState<EnvOption>('custom');
   const [customUrl, setCustomUrl] = useState('https://pronto3-dev-ed.develop.my.salesforce.com');
 
   // Direct login fields
-  const [directLoginUrl, setDirectLoginUrl] = useState('https://storm-f4e8ebcbe3cc7a.lightning.force.com');
-  const [username, setUsername] = useState('pm@agentforce.one');
+  const [directLoginUrl, setDirectLoginUrl] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [securityToken, setSecurityToken] = useState('');
   const [loading, setLoading] = useState(false);
@@ -92,6 +92,17 @@ export default function LoginForm() {
       {/* OAuth Login */}
       {loginMethod === 'oauth' && (
         <>
+          {/* OAuth Notice */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <p className="text-xs text-amber-800">
+              <strong>⚠️ OAuth Setup Required:</strong> OAuth requires a custom Salesforce Connected App.
+              Use Direct Login for now, or contact admin to set up OAuth with the callback URL:
+              <code className="block mt-1 text-xs bg-white px-2 py-1 rounded">
+                https://agentreview-74953dba67a9-131c6398b543.herokuapp.com/OauthRedirect
+              </code>
+            </p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Environment
