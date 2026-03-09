@@ -15,9 +15,11 @@ export async function POST(request: NextRequest) {
     // Get the login URL from the cookie set during authorization
     const loginUrl = request.cookies.get('sf_login_url')?.value || 'https://login.salesforce.com';
 
-    // Get the base URL from the request
-    const { protocol, host } = request.nextUrl;
-    const baseUrl = `${protocol}//${host}`;
+    // Get the base URL - handle Heroku/proxy forwarded headers
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+    const host = forwardedHost || request.nextUrl.host;
+    const baseUrl = `${forwardedProto}://${host}`;
     const redirectUri = getRedirectUri(baseUrl);
 
     const session = await exchangeCodeForSession(code, loginUrl, redirectUri);
