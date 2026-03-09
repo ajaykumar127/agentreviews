@@ -9,7 +9,12 @@ interface LifecycleTimelineProps {
   onStageSelect: (stage: ReviewStage) => void;
 }
 
-const STAGE_CONFIG = {
+const STAGE_CONFIG: Record<ReviewStage, {
+  label: string;
+  icon: any;
+  color: string;
+  description: string;
+}> = {
   designSetup: {
     label: 'Design & Setup',
     icon: Settings,
@@ -40,7 +45,13 @@ const STAGE_CONFIG = {
     color: 'pink',
     description: 'Performance and optimization',
   },
-} as const;
+  data: {
+    label: 'Data Cloud',
+    icon: Activity,
+    color: 'indigo',
+    description: 'Data integration and grounding',
+  },
+};
 
 export default function LifecycleTimeline({ agent, selectedStage, onStageSelect }: LifecycleTimelineProps) {
   const { stageScores, findings } = agent;

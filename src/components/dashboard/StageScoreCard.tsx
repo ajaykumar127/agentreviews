@@ -44,6 +44,20 @@ export default function StageScoreCard({ stage, score, label }: StageScoreCardPr
           text: 'text-pink-900',
           score: 'text-pink-600',
         };
+      case 'data':
+        return {
+          bg: 'bg-indigo-50',
+          border: 'border-indigo-200',
+          text: 'text-indigo-900',
+          score: 'text-indigo-600',
+        };
+      default:
+        return {
+          bg: 'bg-gray-50',
+          border: 'border-gray-200',
+          text: 'text-gray-900',
+          score: 'text-gray-600',
+        };
     }
   };
 

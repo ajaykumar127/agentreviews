@@ -13,6 +13,7 @@ const STAGE_LABELS: Record<ReviewStage, string> = {
   test: 'Test',
   deploy: 'Deploy',
   monitor: 'Monitor',
+  data: 'Data Cloud',
 };
 
 const SEVERITY_CONFIG: Record<Severity, {

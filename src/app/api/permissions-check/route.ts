@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { decryptSession, getConnection } from '@/lib/salesforce/connection';
 
+interface PermissionCheck {
+  permission: string;
+  status: string;
+  error?: string;
+}
+
+interface ObjectCheck {
+  object: string;
+  api: string;
+  accessible: boolean;
+  recordCount?: number;
+  error?: any;
+}
+
+interface Recommendation {
+  severity: string;
+  title: string;
+  message: string;
+  objects?: any[];
+  solution: string | string[];
+}
+
 export async function POST(request: NextRequest) {
   try {
     const sessionCookie = request.cookies.get('sf_session')?.value;
@@ -13,7 +35,13 @@ export async function POST(request: NextRequest) {
 
     console.log('=== Starting Permissions Diagnostic ===');
 
-    const results = {
+    const results: {
+      userInfo: any;
+      permissions: PermissionCheck[];
+      accessibleObjects: ObjectCheck[];
+      missingPermissions: string[];
+      recommendations: Recommendation[];
+    } = {
       userInfo: {},
       permissions: [],
       accessibleObjects: [],
