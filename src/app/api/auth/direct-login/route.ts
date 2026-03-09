@@ -65,12 +65,12 @@ export async function POST(request: NextRequest) {
     console.log('Org ID:', userInfo?.organizationId);
     console.log('Connection state - Access Token:', !!conn.accessToken);
     console.log('Connection state - Instance URL:', conn.instanceUrl);
-    console.log('Connection state - Session ID:', conn.sessionId ? 'exists' : 'missing');
 
     // Extract session information - jsforce stores it in different places
-    const accessToken = conn.accessToken || conn.sessionId;
+    // TypeScript doesn't know about sessionId but it might exist at runtime
+    const accessToken = conn.accessToken || (conn as any).sessionId;
     const instanceUrl = conn.instanceUrl;
-    const userId = userInfo?.id || userInfo?.userId;
+    const userId = userInfo?.id || (userInfo as any)?.userId;
     const orgId = userInfo?.organizationId;
 
     console.log('Extracted values:');
