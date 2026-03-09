@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exchangeCodeForSession, encryptSession } from '@/lib/salesforce/connection';
+import { exchangeCodeForSession, encryptSession, getRedirectUri } from '@/lib/salesforce/connection';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +15,12 @@ export async function POST(request: NextRequest) {
     // Get the login URL from the cookie set during authorization
     const loginUrl = request.cookies.get('sf_login_url')?.value || 'https://login.salesforce.com';
 
-    const session = await exchangeCodeForSession(code, loginUrl);
+    // Get the base URL from the request
+    const { protocol, host } = request.nextUrl;
+    const baseUrl = `${protocol}//${host}`;
+    const redirectUri = getRedirectUri(baseUrl);
+
+    const session = await exchangeCodeForSession(code, loginUrl, redirectUri);
 
     const response = NextResponse.json({
       success: true,

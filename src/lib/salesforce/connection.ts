@@ -14,27 +14,41 @@ interface OAuthTokenResponse {
 
 // Salesforce CLI's default Connected App - available in all orgs
 const SF_CLI_CLIENT_ID = 'PlatformCLI';
-const SF_CLI_REDIRECT_URI = 'http://localhost:1717/OauthRedirect';
 
-export function getOAuthAuthorizeUrl(loginUrl: string): string {
+// Get redirect URI dynamically
+export function getRedirectUri(baseUrl?: string): string {
+  // If baseUrl provided, use it
+  if (baseUrl) {
+    return `${baseUrl}/OauthRedirect`;
+  }
+  // Use environment variable if set
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return `${process.env.NEXT_PUBLIC_APP_URL}/OauthRedirect`;
+  }
+  // Default to localhost
+  return 'http://localhost:1717/OauthRedirect';
+}
+
+export function getOAuthAuthorizeUrl(loginUrl: string, baseUrl?: string): string {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: SF_CLI_CLIENT_ID,
-    redirect_uri: SF_CLI_REDIRECT_URI,
+    redirect_uri: getRedirectUri(baseUrl),
   });
   return `${loginUrl}/services/oauth2/authorize?${params.toString()}`;
 }
 
 export async function exchangeCodeForSession(
   code: string,
-  loginUrl: string
+  loginUrl: string,
+  redirectUri: string
 ): Promise<SalesforceSession> {
   const tokenUrl = `${loginUrl}/services/oauth2/token`;
 
   const params = new URLSearchParams({
     grant_type: 'authorization_code',
     client_id: SF_CLI_CLIENT_ID,
-    redirect_uri: SF_CLI_REDIRECT_URI,
+    redirect_uri: redirectUri,
     code,
   });
 
