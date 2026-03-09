@@ -50,14 +50,17 @@ export default function LoginForm() {
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('Login failed:', data);
         setError(data.error || 'Login failed');
         return;
       }
 
+      console.log('Login successful, redirecting to dashboard');
       // Redirect to dashboard on success
       router.push('/dashboard');
     } catch (err) {
-      setError('Login failed. Please check your credentials.');
+      console.error('Login exception:', err);
+      setError('Login failed. Please check your credentials and try again.');
     } finally {
       setLoading(false);
     }
