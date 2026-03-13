@@ -4,14 +4,15 @@ export const CATEGORY_CONFIG: Record<CategoryId, { label: string; weight: number
   // Design & Setup (10% of overall score)
   agentDefinition:    { label: 'Agent Definition',       weight: 0.10, stage: 'designSetup' },
 
-  // Configuration (50% of overall score)
-  topicDesign:        { label: 'Topic Design',           weight: 0.10, stage: 'configuration' },
-  instructionQuality: { label: 'Instruction Quality',    weight: 0.12, stage: 'configuration' },
-  actionsConfig:      { label: 'Actions Configuration',  weight: 0.10, stage: 'configuration' },
-  escalation:         { label: 'Escalation Paths',       weight: 0.05, stage: 'configuration' },
+  // Configuration (55% of overall score)
+  topicDesign:        { label: 'Topic Design',           weight: 0.09, stage: 'configuration' },
+  instructionQuality: { label: 'Instruction Quality',    weight: 0.10, stage: 'configuration' },
+  actionsConfig:      { label: 'Actions Configuration',  weight: 0.09, stage: 'configuration' },
+  agentScriptDeterminism: { label: 'Agent Script & Determinism', weight: 0.12, stage: 'configuration' },
+  escalation:         { label: 'Escalation Paths',       weight: 0.04, stage: 'configuration' },
   guardrails:         { label: 'Guardrails',             weight: 0.03, stage: 'configuration' },
-  channelConfig:      { label: 'Channel Config',         weight: 0.03, stage: 'configuration' },
-  errorHandling:      { label: 'Error Handling',         weight: 0.05, stage: 'configuration' },
+  channelConfig:      { label: 'Channel Config',         weight: 0.02, stage: 'configuration' },
+  errorHandling:      { label: 'Error Handling',         weight: 0.04, stage: 'configuration' },
   security:           { label: 'Security',               weight: 0.02, stage: 'configuration' },
 
   // Test (15% of overall score)
@@ -26,6 +27,9 @@ export const CATEGORY_CONFIG: Record<CategoryId, { label: string; weight: number
 
   // Data (note: using agentDefinition category for data checks, shown under 'data' stage)
   // This will be displayed separately in the Data tab
+
+  // Apex (org-level scan, shown under 'apex' tab)
+  apexBestPractices: { label: 'Apex Best Practices', weight: 0, stage: 'apex' as const },
 };
 
 const SEVERITY_DEDUCTIONS = {
@@ -83,4 +87,13 @@ export function scoreToGrade(score: number): 'A' | 'B' | 'C' | 'D' | 'F' {
   if (score >= 60) return 'C';
   if (score >= 40) return 'D';
   return 'F';
+}
+
+/** Hex color for a 0–100 score (green → yellow → orange → red). Used by score rings and grade badges. */
+export function scoreColor(score: number): string {
+  if (score >= 90) return '#059669'; // emerald-600
+  if (score >= 75) return '#22c55e'; // green-500
+  if (score >= 60) return '#eab308'; // yellow-500
+  if (score >= 40) return '#f97316'; // orange-500
+  return '#dc2626'; // red-600
 }

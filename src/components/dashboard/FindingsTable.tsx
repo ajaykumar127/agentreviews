@@ -3,12 +3,8 @@
 import { useState } from 'react';
 import type { Finding } from '@/lib/analysis/types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-
-const SEVERITY_STYLES = {
-  critical: 'bg-red-100 text-red-800 border-red-200',
-  warning: 'bg-amber-100 text-amber-800 border-amber-200',
-  info: 'bg-blue-100 text-blue-800 border-blue-200',
-};
+import SeverityBadge from '@/components/ui/SeverityBadge';
+import { STAGE_LABELS } from '@/lib/analysis/constants';
 
 const STAGE_STYLES: Record<string, string> = {
   designSetup: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -16,6 +12,8 @@ const STAGE_STYLES: Record<string, string> = {
   test: 'bg-green-50 text-green-700 border-green-200',
   deploy: 'bg-orange-50 text-orange-700 border-orange-200',
   monitor: 'bg-pink-50 text-pink-700 border-pink-200',
+  data: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  apex: 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
 export default function FindingsTable({ findings }: { findings: Finding[] }) {
@@ -85,19 +83,11 @@ export default function FindingsTable({ findings }: { findings: Finding[] }) {
                   ) : (
                     <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                   )}
-                  <span
-                    className={`text-xs font-medium px-2 py-0.5 rounded border ${SEVERITY_STYLES[finding.severity]}`}
-                  >
-                    {finding.severity.toUpperCase()}
-                  </span>
+                  <SeverityBadge severity={finding.severity} />
                   <span
                     className={`text-xs font-medium px-2 py-0.5 rounded border ${STAGE_STYLES[finding.stage] || 'bg-gray-50 text-gray-700 border-gray-200'}`}
                   >
-                    {finding.stage === 'designSetup' ? 'DESIGN & SETUP' :
-                     finding.stage === 'configuration' ? 'CONFIGURATION' :
-                     finding.stage === 'test' ? 'TEST' :
-                     finding.stage === 'deploy' ? 'DEPLOY' :
-                     'MONITOR'}
+                    {(STAGE_LABELS[finding.stage] || finding.stage).toUpperCase()}
                   </span>
                   <span className="text-xs text-gray-400 font-mono">{finding.id}</span>
                   <span className="text-sm text-gray-900 font-medium flex-1">

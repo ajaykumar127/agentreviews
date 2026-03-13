@@ -362,13 +362,46 @@ export async function getDataCloudInfo(conn: Connection): Promise<{
 
   console.log('=== Starting Data Cloud detection ===');
 
-  // Get list of all available objects in the org
+  // Method 1: Check feature licenses (most reliable)
+  try {
+    const licenseQuery = `SELECT Name, Status, UsedLicenses, TotalLicenses
+                          FROM UserLicense
+                          WHERE Name LIKE '%Data Cloud%' OR Name LIKE '%Einstein%' OR Name LIKE '%CDP%'
+                          LIMIT 10`;
+    debugInfo.queriesAttempted.push(licenseQuery);
+    const licenseResult = await safeQuery(conn, licenseQuery);
+    if (licenseResult.success && licenseResult.records.length > 0) {
+      console.log('✓ Data Cloud detected via feature license');
+      console.log('Licenses found:', licenseResult.records.map((r: any) => r.Name));
+      result.isEnabled = true;
+    }
+  } catch (error: any) {
+    debugInfo.errors.push(`License check failed: ${error?.message}`);
+  }
+
+  // Method 2: Check permission set groups for Data Cloud
+  try {
+    const permSetQuery = `SELECT Id, DeveloperName, MasterLabel
+                          FROM PermissionSetGroup
+                          WHERE DeveloperName LIKE '%DataCloud%' OR DeveloperName LIKE '%CDP%'
+                          LIMIT 10`;
+    debugInfo.queriesAttempted.push(permSetQuery);
+    const permSetResult = await safeQuery(conn, permSetQuery);
+    if (permSetResult.success && permSetResult.records.length > 0) {
+      console.log('✓ Data Cloud detected via permission set groups');
+      result.isEnabled = true;
+    }
+  } catch (error: any) {
+    debugInfo.errors.push(`PermissionSetGroup check failed: ${error?.message}`);
+  }
+
+  // Method 3: Get list of all available objects in the org
   try {
     const describe = await conn.describeGlobal();
     debugInfo.availableObjects = describe.sobjects.map(obj => obj.name);
     console.log(`Found ${debugInfo.availableObjects.length} total objects in org`);
 
-    // Filter for Data Cloud related objects
+    // Filter for Data Cloud related objects (broader search)
     debugInfo.dataCloudObjects = debugInfo.availableObjects.filter(name =>
       name.includes('DataCloud') ||
       name.includes('DataSource') ||
@@ -377,17 +410,37 @@ export async function getDataCloudInfo(conn: Connection): Promise<{
       name.includes('AI') ||
       name.includes('Search') ||
       name.includes('Retriever') ||
-      name.includes('Vector')
+      name.includes('Vector') ||
+      name.includes('CDP') ||
+      name.includes('Lakehouse') ||
+      name.includes('DataStream') ||
+      name.includes('DataSpace')
     );
     console.log('Data Cloud related objects found:', debugInfo.dataCloudObjects);
+
+    // If we found Data Cloud objects, mark as enabled
+    if (debugInfo.dataCloudObjects.length > 0) {
+      result.isEnabled = true;
+      console.log('✓ Data Cloud detected via object discovery');
+    }
   } catch (error: any) {
     const msg = `describeGlobal failed: ${error?.message || error}`;
     console.log(msg);
     debugInfo.errors.push(msg);
   }
 
-  // Check if Data Cloud is enabled by looking for key indicator objects
-  const enabledIndicators = ['DataCloudTenant', 'DataCloudDataSource', 'DataSourceObject', 'DataSourceTenant'];
+  // Method 4: Check if Data Cloud is enabled by looking for key indicator objects
+  const enabledIndicators = [
+    'DataCloudTenant',
+    'DataCloudDataSource',
+    'DataSourceObject',
+    'DataSourceTenant',
+    'DataCloudAddress',
+    'CdpQuery',
+    'DataStreamDefinition',
+    'DataLakeObject'
+  ];
+
   for (const objName of enabledIndicators) {
     if (debugInfo.availableObjects.length === 0 || debugInfo.availableObjects.includes(objName)) {
       const query = `SELECT Id FROM ${objName} LIMIT 1`;
@@ -403,33 +456,65 @@ export async function getDataCloudInfo(conn: Connection): Promise<{
     }
   }
 
-  // Try to get data sources - query available objects only
-  const dataSourceObjects = ['ExternalDataSource', 'NamedCredential', 'DataCloudDataSource', 'DataSourceTenant'];
+  // Try to get data sources - try multiple approaches
+  const dataSourceObjects = [
+    'ExternalDataSource',
+    'NamedCredential',
+    'DataCloudDataSource',
+    'DataSourceTenant',
+    'DataSourceObject',
+    'DataStream',
+    'DataStreamDefinition',
+    'CdpConnector'
+  ];
 
   for (const objName of dataSourceObjects) {
     if (debugInfo.availableObjects.length === 0 || debugInfo.availableObjects.includes(objName)) {
-      const query = `SELECT Id, Name FROM ${objName} LIMIT 10`;
+      // Try to get more fields if they exist
+      const fields = ['Id', 'Name', 'DeveloperName', 'Status', 'Type'];
+      const availableFields = fields.slice(0, 2); // Start with Id, Name
+      const query = `SELECT ${availableFields.join(', ')} FROM ${objName} LIMIT 20`;
       debugInfo.queriesAttempted.push(query);
       const queryResult = await safeQuery(conn, query);
       if (queryResult.success && queryResult.records.length > 0) {
         console.log(`✓ Found ${queryResult.records.length} data sources in ${objName}`);
-        result.dataSources = queryResult.records;
-        break;
+        result.dataSources = [...result.dataSources, ...queryResult.records];
+        // Don't break - collect from multiple sources
       }
     }
   }
 
+  // Also check tooling API for setup entities
+  const toolingDataSourceQuery = `SELECT Id, DeveloperName, MasterLabel FROM SetupEntityAccess WHERE SetupEntityId IN (SELECT Id FROM SetupEntity WHERE DeveloperName LIKE '%DataCloud%') LIMIT 10`;
+  debugInfo.queriesAttempted.push(toolingDataSourceQuery);
+  const toolingDSResult = await safeQuery(conn, toolingDataSourceQuery, true);
+  if (toolingDSResult.success && toolingDSResult.records.length > 0) {
+    console.log(`✓ Found Data Cloud setup entities`);
+  }
+
   console.log(`Data sources found: ${result.dataSources.length}`);
 
-  // Check for GenAI Retrievers - try standard API first, then tooling
-  const standardRetrieverResult = await safeQuery(conn, 'SELECT Id, Name, DeveloperName FROM GenAiRetriever LIMIT 10');
+  // Check for GenAI Retrievers - try multiple approaches
+  // Try 1: Standard API with full fields
+  let retrieverQueries = [
+    'SELECT Id, Name, DeveloperName, Type, Status FROM GenAiRetriever LIMIT 20',
+    'SELECT Id, Name, DeveloperName FROM GenAiRetriever LIMIT 20',
+    'SELECT Id, DeveloperName FROM GenAiRetriever LIMIT 20'
+  ];
 
-  if (standardRetrieverResult.success && standardRetrieverResult.records.length > 0) {
-    result.retrievers = standardRetrieverResult.records;
-    console.log(`✓ Found ${result.retrievers.length} retrievers via standard API`);
-  } else {
-    // Try tooling API
-    const toolingRetrieverResult = await safeQuery(conn, 'SELECT Id, DeveloperName, MasterLabel FROM GenAiRetriever LIMIT 10', true);
+  for (const query of retrieverQueries) {
+    debugInfo.queriesAttempted.push(query);
+    const standardRetrieverResult = await safeQuery(conn, query);
+    if (standardRetrieverResult.success && standardRetrieverResult.records.length > 0) {
+      result.retrievers = standardRetrieverResult.records;
+      console.log(`✓ Found ${result.retrievers.length} retrievers via standard API`);
+      break;
+    }
+  }
+
+  // Try 2: Tooling API if standard failed
+  if (result.retrievers.length === 0) {
+    const toolingRetrieverResult = await safeQuery(conn, 'SELECT Id, DeveloperName, MasterLabel FROM GenAiRetriever LIMIT 20', true);
     if (toolingRetrieverResult.success && toolingRetrieverResult.records.length > 0) {
       result.retrievers = toolingRetrieverResult.records.map((r: any) => ({
         Id: r.Id,
@@ -440,21 +525,65 @@ export async function getDataCloudInfo(conn: Connection): Promise<{
     }
   }
 
+  // Try 3: Check for retriever definition object
+  if (result.retrievers.length === 0 && debugInfo.availableObjects.includes('GenAiRetrieverDefinition')) {
+    const defQuery = 'SELECT Id, DeveloperName, MasterLabel FROM GenAiRetrieverDefinition LIMIT 20';
+    debugInfo.queriesAttempted.push(defQuery);
+    const defResult = await safeQuery(conn, defQuery);
+    if (defResult.success && defResult.records.length > 0) {
+      result.retrievers = defResult.records.map((r: any) => ({
+        Id: r.Id,
+        Name: r.MasterLabel || r.DeveloperName || '',
+        DeveloperName: r.DeveloperName,
+      }));
+      console.log(`✓ Found ${result.retrievers.length} retrievers via GenAiRetrieverDefinition`);
+    }
+  }
+
   console.log(`Retrievers found: ${result.retrievers.length}`);
 
-  // Check for Search Indexes - try multiple object names
-  const searchIndexObjects = ['SearchIndex', 'DataCloudSearchIndex', 'VectorIndex'];
+  // Check for Search Indexes - try multiple object names and approaches
+  const searchIndexObjects = [
+    'SearchIndex',
+    'DataCloudSearchIndex',
+    'VectorIndex',
+    'DataCloudIndex',
+    'EinsteinSearchIndex',
+    'VectorSearchIndex'
+  ];
 
   for (const objName of searchIndexObjects) {
     if (debugInfo.availableObjects.length === 0 || debugInfo.availableObjects.includes(objName)) {
-      const query = `SELECT Id, Name, DeveloperName FROM ${objName} LIMIT 10`;
-      debugInfo.queriesAttempted.push(query);
-      const queryResult = await safeQuery(conn, query);
-      if (queryResult.success && queryResult.records.length > 0) {
-        console.log(`✓ Found ${queryResult.records.length} search indexes in ${objName}`);
-        result.searchIndexes = queryResult.records;
-        break;
+      const queries = [
+        `SELECT Id, Name, DeveloperName, Status FROM ${objName} LIMIT 20`,
+        `SELECT Id, Name, DeveloperName FROM ${objName} LIMIT 20`,
+        `SELECT Id, Name FROM ${objName} LIMIT 20`
+      ];
+
+      for (const query of queries) {
+        debugInfo.queriesAttempted.push(query);
+        const queryResult = await safeQuery(conn, query);
+        if (queryResult.success && queryResult.records.length > 0) {
+          console.log(`✓ Found ${queryResult.records.length} search indexes in ${objName}`);
+          result.searchIndexes = [...result.searchIndexes, ...queryResult.records];
+          break; // Move to next object type
+        }
       }
+    }
+  }
+
+  // Try tooling API for indexes
+  if (result.searchIndexes.length === 0) {
+    const toolingIndexQuery = 'SELECT Id, DeveloperName, MasterLabel FROM SearchIndex LIMIT 20';
+    debugInfo.queriesAttempted.push(toolingIndexQuery);
+    const toolingIndexResult = await safeQuery(conn, toolingIndexQuery, true);
+    if (toolingIndexResult.success && toolingIndexResult.records.length > 0) {
+      result.searchIndexes = toolingIndexResult.records.map((r: any) => ({
+        Id: r.Id,
+        Name: r.MasterLabel || r.DeveloperName || '',
+        DeveloperName: r.DeveloperName,
+      }));
+      console.log(`✓ Found ${result.searchIndexes.length} search indexes via tooling API`);
     }
   }
 
@@ -479,8 +608,8 @@ export async function getDataCloudConnections(
   try {
     // Try to find data cloud connections (this is a placeholder - actual object names may differ)
     const query = `
-      SELECT Id, Name 
-      FROM GenAiPluginDataSource 
+      SELECT Id, Name
+      FROM GenAiPluginDataSource
       WHERE GenAiPluginId IN (${topicIds.map(id => `'${id}'`).join(',')})
       LIMIT 50
     `;
@@ -490,4 +619,75 @@ export async function getDataCloudConnections(
     // Object may not exist or no permissions
     return [];
   }
+}
+
+// Check Agentforce permissions and configuration
+export async function checkAgentforcePermissions(
+  conn: Connection,
+  userId?: string
+): Promise<{
+  hasAgentforceAccess: boolean;
+  permissionSets: any[];
+  missingPermissions: string[];
+  recommendations: string[];
+}> {
+  const result = {
+    hasAgentforceAccess: false,
+    permissionSets: [] as any[],
+    missingPermissions: [] as string[],
+    recommendations: [] as string[],
+  };
+
+  try {
+    // Check for Agentforce-related permission sets in the org
+    const permSetQuery = `
+      SELECT Id, Name, Label, Description
+      FROM PermissionSet
+      WHERE Name LIKE '%Agent%' OR Name LIKE '%GenAi%' OR Name LIKE '%Einstein%'
+      LIMIT 50
+    `;
+    const permSetResult = await conn.query(permSetQuery);
+    result.permissionSets = permSetResult.records || [];
+    console.log(`Found ${result.permissionSets.length} Agentforce-related permission sets`);
+
+    // Check if user has required permissions (if userId provided)
+    if (userId) {
+      const userPermQuery = `
+        SELECT PermissionSet.Name, PermissionSet.Label
+        FROM PermissionSetAssignment
+        WHERE AssigneeId = '${userId}'
+        AND (PermissionSet.Name LIKE '%Agent%' OR PermissionSet.Name LIKE '%GenAi%')
+      `;
+      const userPermResult = await conn.query(userPermQuery);
+
+      if (userPermResult.records && userPermResult.records.length > 0) {
+        result.hasAgentforceAccess = true;
+        console.log(`User has ${userPermResult.records.length} Agentforce permission assignments`);
+      } else {
+        result.missingPermissions.push('No Agentforce permission sets assigned to current user');
+        result.recommendations.push('Assign "Agents User" or similar permission set to access Agentforce features');
+      }
+    }
+
+    // Check for required object permissions
+    const requiredObjects = ['GenAiPlannerBundle', 'GenAiPlugin', 'GenAiFunction'];
+    for (const objName of requiredObjects) {
+      try {
+        await conn.query(`SELECT Id FROM ${objName} LIMIT 1`);
+        console.log(`✓ User has access to ${objName}`);
+      } catch (error: any) {
+        if (error.errorCode === 'INVALID_TYPE' || error.message?.includes('sObject type')) {
+          result.missingPermissions.push(`${objName} object not available (may need Agentforce license)`);
+        } else {
+          result.missingPermissions.push(`No read permission on ${objName}`);
+          result.recommendations.push(`Grant read access to ${objName} via permission set`);
+        }
+      }
+    }
+
+  } catch (error: any) {
+    console.error('Permission check failed:', error.message);
+  }
+
+  return result;
 }

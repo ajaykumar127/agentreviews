@@ -1,16 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { decryptSession, getConnection } from '@/lib/salesforce/connection';
+import { NextRequest } from 'next/server';
 import { writeFileSync } from 'fs';
+import { join } from 'path';
+import { getAuthenticatedConnection, jsonError, jsonSuccess } from '@/lib/api';
 
 export async function GET(request: NextRequest) {
-  try {
-    const sessionCookie = request.cookies.get('sf_session')?.value;
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
+  const auth = getAuthenticatedConnection(request);
+  if (!auth.ok) return auth.response;
+  const { conn, session } = auth;
 
-    const session = decryptSession(sessionCookie);
-    const conn = getConnection(session);
+  try {
     const results: Record<string, unknown> = {};
 
     const objectsToTry = [
@@ -44,15 +42,14 @@ export async function GET(request: NextRequest) {
 
     const output = { session: { instanceUrl: session.instanceUrl, apiVersion: session.apiVersion }, results };
 
-    // Save to disk so we can read it
     try {
-      writeFileSync('/Users/ajaykumar/AgentAnalysis/agentforce-analyzer/debug-output.json', JSON.stringify(output, null, 2));
+      writeFileSync(join(process.cwd(), 'debug-output.json'), JSON.stringify(output, null, 2));
     } catch {
       // ignore write errors
     }
 
-    return NextResponse.json(output);
+    return jsonSuccess(output);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Debug failed' }, { status: 500 });
+    return jsonError(error instanceof Error ? error.message : 'Debug failed', 500);
   }
 }

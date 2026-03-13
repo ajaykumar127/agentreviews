@@ -8,6 +8,12 @@ import {
   scoreToGrade,
   CATEGORY_CONFIG,
 } from './scoring';
+import {
+  calculateAdvancedCategoryScore,
+  calculateDimensionalScores,
+  calculatePercentile,
+  calculateConfidenceInterval,
+} from './advancedScoring';
 import { analyzeTopicDesign } from './rules/topicDesign';
 import { analyzeInstructionQuality } from './rules/instructionQuality';
 import { analyzeActionsConfig } from './rules/actionsConfig';
@@ -22,6 +28,7 @@ import { analyzeAgentDefinition } from './rules/agentDefinition';
 import { analyzeTestExistence } from './rules/testExistence';
 import { analyzeActivation } from './rules/activation';
 import { analyzeDataCloud } from './rules/dataCloud';
+import { analyzeAgentScriptDeterminism } from './rules/agentScriptDeterminism';
 import type {
   AgentAnalysisData,
   AgentReport,
@@ -37,6 +44,7 @@ const ANALYZERS: Record<CategoryId, RuleAnalyzer> = {
   topicDesign: analyzeTopicDesign,
   instructionQuality: analyzeInstructionQuality,
   actionsConfig: analyzeActionsConfig,
+  agentScriptDeterminism: analyzeAgentScriptDeterminism,
   escalation: analyzeEscalation,
   guardrails: analyzeGuardrails,
   channelConfig: analyzeChannelConfig,
@@ -46,6 +54,8 @@ const ANALYZERS: Record<CategoryId, RuleAnalyzer> = {
   testCoverage: analyzeTestCoverage,
   testExistence: analyzeTestExistence,
   activation: analyzeActivation,
+  // Apex best practices are run org-wide via /api/scan-apex, not per-agent
+  apexBestPractices: () => [],
 };
 
 export async function analyzeAgent(
@@ -53,29 +63,34 @@ export async function analyzeAgent(
   bot: BotRecord
 ): Promise<AgentReport> {
   // Fetch all metadata
+  console.log('[Scan]   Fetching bot version, topics, actions...');
   const botVersion = await queries.getActiveBotVersion(conn, bot.Id);
   const allTopics = await queries.getTopics(conn);
   const allActions = await queries.getActions(conn);
+  console.log('[Scan]   Topics:', allTopics.length, '| Actions:', allActions.length);
 
   // Get full metadata via Metadata API
+  console.log('[Scan]   Loading topic metadata...');
   const topicMetadata = await queries.getTopicMetadata(
     conn,
     allTopics.map((t) => t.DeveloperName)
   );
+  console.log('[Scan]   Loading action metadata...');
   const actionMetadata = await queries.getActionMetadata(
     conn,
     allActions.map((a) => a.DeveloperName)
   );
+  console.log('[Scan]   Loading bot/bot version metadata...');
   const botMetadata = await queries.getBotMetadata(conn, [bot.DeveloperName]);
   const botVersionMeta = botVersion
     ? await queries.getBotVersionMetadata(conn, [botVersion.DeveloperName])
     : [];
 
-  // Fetch test definitions and channel deployments
+  console.log('[Scan]   Fetching test definitions & channel deployments...');
   const testDefinitions = await queries.getTestDefinitions(conn, bot.DeveloperName);
   const channelDeployments = await queries.getChannelDeployments(conn, bot.Id);
 
-  // Fetch Data Cloud information
+  console.log('[Scan]   Fetching Data Cloud info...');
   const dataCloudInfo = await queries.getDataCloudInfo(conn);
 
   const analysisData: AgentAnalysisData = {
@@ -94,12 +109,22 @@ export async function analyzeAgent(
   };
 
   // Run all analyzers
+  console.log('[Scan]   Running rule analyzers...');
   const categories: CategoryScore[] = (
     Object.entries(ANALYZERS) as [CategoryId, RuleAnalyzer][]
   ).map(([categoryId, analyzer]) => {
     const findings = analyzer(analysisData);
     const config = CATEGORY_CONFIG[categoryId];
     const score = calculateCategoryScore(findings);
+
+    // Calculate advanced metrics
+    const advancedMetrics = calculateAdvancedCategoryScore(
+      findings,
+      categoryId,
+      10, // Estimated total possible checks per category
+      analysisData
+    );
+
     return {
       category: categoryId,
       stage: config.stage,
@@ -111,6 +136,12 @@ export async function analyzeAgent(
       passCount: findings.filter((f) => f.severity === 'info').length,
       warnCount: findings.filter((f) => f.severity === 'warning').length,
       failCount: findings.filter((f) => f.severity === 'critical').length,
+      // Add advanced metrics
+      exponentialScore: advancedMetrics.exponentialScore,
+      confidenceInterval: advancedMetrics.confidenceInterval,
+      dimensions: advancedMetrics.dimensions,
+      impactWeightedScore: advancedMetrics.impactWeightedScore,
+      percentile: calculatePercentile(advancedMetrics.exponentialScore || score, categoryId),
     };
   });
 
@@ -131,6 +162,12 @@ export async function analyzeAgent(
     data: dataScore, // Data stage score from data cloud findings
   };
 
+  // Calculate overall advanced metrics across all findings
+  const totalPossibleChecks = categories.length * 10 + 10; // Estimate based on categories + data cloud
+  const overallConfidenceInterval = calculateConfidenceInterval(allFindings, totalPossibleChecks);
+  const overallDimensionalScores = calculateDimensionalScores(allFindings);
+  const overallPercentile = calculatePercentile(overallScore, 'overall');
+
   return {
     agentName: bot.MasterLabel,
     agentDeveloperName: bot.DeveloperName,
@@ -140,6 +177,10 @@ export async function analyzeAgent(
     categories,
     findings: allFindings,
     dataCloudInfo,
+    // Advanced scoring metrics
+    confidenceInterval: overallConfidenceInterval,
+    dimensionalScores: overallDimensionalScores.dimensions,
+    percentile: overallPercentile,
     analyzedAt: new Date().toISOString(),
     orgId: (conn as unknown as { userInfo?: { organizationId?: string } }).userInfo?.organizationId ?? '',
     apiVersion: conn.version ?? '61.0',
@@ -147,7 +188,9 @@ export async function analyzeAgent(
 }
 
 export async function analyzeOrg(conn: Connection): Promise<AnalysisReport> {
+  console.log('[Scan] Listing agents in org...');
   const agents = await queries.listAgents(conn);
+  console.log('[Scan] Found', agents.length, 'agent(s)');
 
   if (agents.length === 0) {
     return {
@@ -164,9 +207,12 @@ export async function analyzeOrg(conn: Connection): Promise<AnalysisReport> {
   }
 
   const agentReports: AgentReport[] = [];
-  for (const agent of agents) {
+  for (let i = 0; i < agents.length; i++) {
+    const agent = agents[i];
+    console.log(`[Scan] Analyzing agent ${i + 1}/${agents.length}: ${agent.DeveloperName}...`);
     const report = await analyzeAgent(conn, agent);
     agentReports.push(report);
+    console.log(`[Scan]   → ${report.overallGrade} (${report.overallScore}), ${report.findings.length} findings`);
   }
 
   return {

@@ -1,19 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { decryptSession, getConnection } from '@/lib/salesforce/connection';
+import { NextRequest } from 'next/server';
+import { getAuthenticatedConnection, jsonError, jsonSuccess } from '@/lib/api';
 import { listAgents } from '@/lib/salesforce/queries';
 
 export async function GET(request: NextRequest) {
+  const auth = getAuthenticatedConnection(request);
+  if (!auth.ok) return auth.response;
+
   try {
-    const sessionCookie = request.cookies.get('sf_session')?.value;
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-
-    const session = decryptSession(sessionCookie);
-    const conn = getConnection(session);
-    const agents = await listAgents(conn);
-
-    return NextResponse.json({
+    const agents = await listAgents(auth.conn);
+    return jsonSuccess({
       agents: agents.map((a) => ({
         id: a.Id,
         name: a.MasterLabel,
@@ -23,7 +18,6 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch agents';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error instanceof Error ? error.message : 'Failed to fetch agents', 500);
   }
 }

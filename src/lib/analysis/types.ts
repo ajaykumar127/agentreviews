@@ -15,7 +15,7 @@ import type {
 export type Severity = 'critical' | 'warning' | 'info';
 
 // Agent Development Life Cycle stages
-export type ReviewStage = 'designSetup' | 'configuration' | 'test' | 'deploy' | 'monitor' | 'data';
+export type ReviewStage = 'designSetup' | 'configuration' | 'test' | 'deploy' | 'monitor' | 'data' | 'apex';
 
 export type CategoryId =
   | 'topicDesign'
@@ -30,7 +30,9 @@ export type CategoryId =
   | 'testCoverage'
   | 'agentDefinition'
   | 'testExistence'
-  | 'activation';
+  | 'activation'
+  | 'agentScriptDeterminism'
+  | 'apexBestPractices';
 
 export interface Finding {
   id: string;
@@ -43,6 +45,8 @@ export interface Finding {
   affectedComponent: string;
 }
 
+export type ScoreDimension = 'reliability' | 'compliance' | 'usability' | 'maintainability' | 'security';
+
 export interface CategoryScore {
   category: CategoryId;
   stage: ReviewStage;
@@ -54,6 +58,16 @@ export interface CategoryScore {
   passCount: number;
   warnCount: number;
   failCount: number;
+  // Advanced scoring metrics
+  exponentialScore?: number;
+  confidenceInterval?: {
+    lower: number;
+    upper: number;
+    confidence: number;
+  };
+  dimensions?: Record<ScoreDimension, number>;
+  impactWeightedScore?: number;
+  percentile?: number;
 }
 
 export interface AgentReport {
@@ -68,6 +82,7 @@ export interface AgentReport {
     deploy: number;
     monitor: number;
     data: number;
+    apex?: number;
   };
   categories: CategoryScore[];
   findings: Finding[];
@@ -83,6 +98,14 @@ export interface AgentReport {
       errors: string[];
     };
   };
+  // Advanced scoring metrics
+  confidenceInterval?: {
+    lower: number;
+    upper: number;
+    confidence: number;
+  };
+  dimensionalScores?: Record<ScoreDimension, number>;
+  percentile?: number;
   analyzedAt: string;
   orgId: string;
   apiVersion: string;

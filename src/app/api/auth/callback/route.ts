@@ -15,11 +15,14 @@ export async function POST(request: NextRequest) {
     // Get the login URL from the cookie set during authorization
     const loginUrl = request.cookies.get('sf_login_url')?.value || 'https://login.salesforce.com';
 
-    // Get the base URL - handle Heroku/proxy forwarded headers
-    const forwardedHost = request.headers.get('x-forwarded-host');
-    const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
-    const host = forwardedHost || request.nextUrl.host;
-    const baseUrl = `${forwardedProto}://${host}`;
+    // Use same redirect URI as authorize (canonical app URL when set) so token exchange succeeds
+    const canonical = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
+    const baseUrl = canonical || (() => {
+      const forwardedHost = request.headers.get('x-forwarded-host');
+      const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+      const host = forwardedHost || request.nextUrl.host;
+      return `${forwardedProto}://${host}`;
+    })();
     const redirectUri = getRedirectUri(baseUrl);
 
     const session = await exchangeCodeForSession(code, loginUrl, redirectUri);

@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { decryptSession, getConnection } from '@/lib/salesforce/connection';
+import { getAuthenticatedConnection, jsonError, jsonSuccess } from '@/lib/api';
 
 export async function POST(request: NextRequest) {
-  try {
-    const sessionCookie = request.cookies.get('sf_session')?.value;
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
+  const auth = getAuthenticatedConnection(request);
+  if (!auth.ok) return auth.response;
+  const conn = auth.conn;
 
-    const session = decryptSession(sessionCookie);
-    const conn = getConnection(session);
+  try {
 
     // Comprehensive list of possible Data Cloud and Einstein objects
     const objectsToTry = [
@@ -107,12 +104,9 @@ export async function POST(request: NextRequest) {
     console.log(`Successful: ${results.successfulQueries.length}`);
     console.log(`Failed: ${results.failedQueries.length}`);
 
-    return NextResponse.json(results);
+    return jsonSuccess(results);
   } catch (error) {
     console.error('Scan error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Scan failed' },
-      { status: 500 }
-    );
+    return jsonError(error instanceof Error ? error.message : 'Scan failed', 500);
   }
 }

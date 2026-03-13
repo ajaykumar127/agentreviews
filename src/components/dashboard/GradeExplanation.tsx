@@ -2,6 +2,7 @@
 
 import { AlertCircle, TrendingUp, Target, Award } from 'lucide-react';
 import type { AgentReport } from '@/lib/analysis/types';
+import { scoreToGrade } from '@/lib/analysis/scoring';
 
 interface GradeExplanationProps {
   report: AgentReport;
@@ -84,14 +85,6 @@ export default function GradeExplanation({ report, isOpen, onClose }: GradeExpla
   const nextGrade = nextGradeThresholds[report.overallGrade];
   const pointsNeeded = nextGrade ? nextGrade.score - report.overallScore : 0;
   const findingsToFix = Math.ceil(pointsNeeded / 25); // Approximate: assuming critical fixes
-
-  function scoreToGrade(score: number): 'A' | 'B' | 'C' | 'D' | 'F' {
-    if (score >= 90) return 'A';
-    if (score >= 75) return 'B';
-    if (score >= 60) return 'C';
-    if (score >= 40) return 'D';
-    return 'F';
-  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">

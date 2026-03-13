@@ -20,6 +20,9 @@ export async function POST(request: NextRequest) {
     // Convert Lightning URL to proper login URL
     let actualLoginUrl = loginUrl.trim();
 
+    // Remove query parameters (e.g., ?un=username)
+    actualLoginUrl = actualLoginUrl.split('?')[0];
+
     // Remove trailing slashes
     actualLoginUrl = actualLoginUrl.replace(/\/$/, '');
 
@@ -80,24 +83,31 @@ export async function POST(request: NextRequest) {
     console.log('- orgId:', orgId);
 
     // Verify we have the required session information
+    const missingFields = [];
     if (!accessToken) {
       console.error('ERROR: No access token or session ID found');
-      throw new Error('Could not extract access token from login response. Login succeeded but session data is missing.');
+      missingFields.push('access token');
     }
 
     if (!instanceUrl) {
       console.error('ERROR: No instance URL found');
-      throw new Error('Could not extract instance URL from login response');
+      missingFields.push('instance URL');
     }
 
     if (!userId) {
       console.error('ERROR: No user ID found');
-      throw new Error('Could not extract user ID from login response');
+      missingFields.push('user ID');
     }
 
     if (!orgId) {
       console.error('ERROR: No org ID found');
-      throw new Error('Could not extract organization ID from login response');
+      missingFields.push('organization ID');
+    }
+
+    if (missingFields.length > 0) {
+      const errorMsg = `Login succeeded but could not extract: ${missingFields.join(', ')}. Please try again or contact support.`;
+      console.error('MISSING FIELDS:', missingFields);
+      throw new Error(errorMsg);
     }
 
     // Create session object
@@ -136,8 +146,10 @@ export async function POST(request: NextRequest) {
 
     if (error.errorCode === 'INVALID_LOGIN') {
       errorMessage = 'Invalid username or password';
+    } else if (error.errorCode === 'INVALID_OPERATION' || error.message?.includes('SOAP API login')) {
+      errorMessage = 'SOAP API is disabled in this org. Please use OAuth Login (switch to OAuth tab) or contact your admin to enable SOAP API in Setup → Security → Session Settings.';
     } else if (error.message?.includes('security token')) {
-      errorMessage = 'Security token required. Please add your security token to the password or whitelist your IP.';
+      errorMessage = 'Security token required. Enter your security token in the "Security Token" field below the password field. To get your token: Setup → Personal Settings → My Personal Information → Reset My Security Token (will be emailed to you).';
     } else if (error.message) {
       errorMessage = error.message;
     }

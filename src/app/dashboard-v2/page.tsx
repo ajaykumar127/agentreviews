@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AnalysisReport, AgentReport, ReviewStage } from '@/lib/analysis/types';
 import { LogOut, RefreshCw, Sparkles, ArrowLeft } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 import AgentHealthCard from '@/components/v2/AgentHealthCard';
 import LifecycleTimeline from '@/components/v2/LifecycleTimeline';
 import SmartInsights from '@/components/v2/SmartInsights';
@@ -50,28 +51,28 @@ export default function DashboardV2Page() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-[#0c0e14] dark:via-slate-900 dark:to-slate-900">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-50 shadow-sm">
+      <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur-lg opacity-50"></div>
-              <div className="relative w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-white" />
+              <div className="relative w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center">
+                <Sparkles className="w-7 h-7 text-white" />
               </div>
             </div>
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Agent Review Tool
+                Agentforce Agent Review Toolkit ⚡
               </h1>
-              <p className="text-xs text-gray-500 font-medium">Version 2.0</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">Version 2.0</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/dashboard')}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition"
+              className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
             >
               ← Back to V1
             </button>
@@ -83,31 +84,75 @@ export default function DashboardV2Page() {
               <RefreshCw className={`w-4 h-4 ${status === 'loading' ? 'animate-spin' : ''}`} />
               Refresh
             </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
+            <div className="flex flex-col items-end gap-1.5">
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+              <ThemeToggle size="sm" />
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Loading State - Apple Style */}
+        {/* Loading State - X-Ray Scanner */}
         {status === 'loading' && (
           <div className="flex flex-col items-center justify-center py-32">
-            <div className="relative w-24 h-24 mb-8">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full blur-xl opacity-30 animate-pulse"></div>
-              <div className="relative w-24 h-24 border-4 border-gray-200 rounded-full">
-                <div className="absolute inset-0 border-4 border-transparent border-t-blue-600 rounded-full animate-spin"></div>
+            {/* X-Ray Scanner Animation */}
+            <div className="relative mb-8">
+              {/* Agent Icon */}
+              <div className="relative w-32 h-32">
+                <svg className="w-32 h-32 text-gray-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Robot/Agent Head */}
+                  <rect x="6" y="4" width="12" height="10" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                  <circle cx="9.5" cy="8" r="1" fill="currentColor"/>
+                  <circle cx="14.5" cy="8" r="1" fill="currentColor"/>
+                  <path d="M9 11.5h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <rect x="10" y="2" width="4" height="2" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                  <path d="M6 9h-1.5M18 9h1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  {/* Robot Body */}
+                  <rect x="8" y="14" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+                  <path d="M10 16h4M10 18h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+
+                {/* Scanning Beam - Vertical */}
+                <div className="absolute inset-0 overflow-hidden">
+                  <div className="absolute w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-60 blur-sm animate-scan-vertical shadow-[0_0_20px_rgba(34,211,238,0.8)]"></div>
+                </div>
+
+                {/* X-Ray Glow Effect */}
+                <div className="absolute inset-0 rounded-full bg-cyan-400 opacity-10 blur-2xl animate-pulse"></div>
+              </div>
+
+              {/* Grid Lines (X-Ray Feel) */}
+              <div className="absolute inset-0 pointer-events-none opacity-20">
+                <div className="grid grid-cols-4 grid-rows-4 w-32 h-32">
+                  {[...Array(16)].map((_, i) => (
+                    <div key={i} className="border border-cyan-500/30"></div>
+                  ))}
+                </div>
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Analyzing Your Agents</h2>
+
+            <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+              <span className="inline-block animate-pulse text-cyan-600">⚡</span>
+              Running Agent X-Ray Scan
+              <span className="inline-block animate-pulse text-cyan-600">⚡</span>
+            </h2>
             <p className="text-gray-600 text-center max-w-md">
-              Scanning your Salesforce org and running best practice checks across all lifecycle stages...
+              Peering through the code layers... examining topics, actions, and guardrails under the microscope 🔬
             </p>
+
+            {/* Fun Loading Dots */}
+            <div className="flex gap-1 mt-6">
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
           </div>
         )}
 

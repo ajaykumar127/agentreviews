@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { decryptSession, getConnection } from '@/lib/salesforce/connection';
+import { getAuthenticatedConnection, jsonError } from '@/lib/api';
 
 interface PermissionCheck {
   permission: string;
@@ -24,15 +24,11 @@ interface Recommendation {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = getAuthenticatedConnection(request);
+  if (!auth.ok) return auth.response;
+  const { conn, session } = auth;
+
   try {
-    const sessionCookie = request.cookies.get('sf_session')?.value;
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-
-    const session = decryptSession(sessionCookie);
-    const conn = getConnection(session);
-
     console.log('=== Starting Permissions Diagnostic ===');
 
     const results: {
@@ -62,11 +58,12 @@ export async function POST(request: NextRequest) {
       results.missingPermissions.push('Unable to fetch user identity');
     }
 
-    // Check critical permissions
+    // Check critical permissions (use userId from session)
+    const userId = session.userId;
     const permissionChecks = [
-      { name: 'View All Data', query: `SELECT Id FROM PermissionSetAssignment WHERE PermissionSet.Name = 'ViewAllData' AND AssigneeId = '${session.userId}' LIMIT 1` },
-      { name: 'Modify All Data', query: `SELECT Id FROM PermissionSetAssignment WHERE PermissionSet.Name = 'ModifyAllData' AND AssigneeId = '${session.userId}' LIMIT 1` },
-      { name: 'API Enabled', query: `SELECT Id FROM User WHERE Id = '${session.userId}' AND IsActive = true LIMIT 1` },
+      { name: 'View All Data', query: `SELECT Id FROM PermissionSetAssignment WHERE PermissionSet.Name = 'ViewAllData' AND AssigneeId = '${userId}' LIMIT 1` },
+      { name: 'Modify All Data', query: `SELECT Id FROM PermissionSetAssignment WHERE PermissionSet.Name = 'ModifyAllData' AND AssigneeId = '${userId}' LIMIT 1` },
+      { name: 'API Enabled', query: `SELECT Id FROM User WHERE Id = '${userId}' AND IsActive = true LIMIT 1` },
     ];
 
     for (const check of permissionChecks) {
@@ -180,9 +177,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(results);
   } catch (error) {
     console.error('Permissions check error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Permission check failed' },
-      { status: 500 }
-    );
+    return jsonError(error instanceof Error ? error.message : 'Permission check failed', 500);
   }
 }

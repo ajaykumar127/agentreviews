@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { decryptSession, getConnection } from '@/lib/salesforce/connection';
+import { getAuthenticatedConnection } from '@/lib/api';
+import { jsonError } from '@/lib/api/responses';
 import { analyzeOrg } from '@/lib/analysis/engine';
 import { Connection } from 'jsforce';
 
@@ -31,32 +32,34 @@ async function debugOrgMetadata(conn: Connection) {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const sessionCookie = request.cookies.get('sf_session')?.value;
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
+  const start = Date.now();
+  const auth = getAuthenticatedConnection(request);
+  if (!auth.ok) return auth.response;
 
-    const session = decryptSession(sessionCookie);
-    const conn = getConnection(session);
+  const conn = auth.conn;
+  try {
+    console.log('[Scan] Request received');
+    console.log('[Scan] Session OK, starting org analysis...');
     const report = await analyzeOrg(conn);
+    console.log(`[Scan] Done in ${((Date.now() - start) / 1000).toFixed(1)}s – ${report.agents.length} agent(s), ${report.summary.criticalCount} critical, ${report.summary.warningCount} warnings`);
 
     // If no agents found, include debug info to help diagnose
     if (report.agents.length === 0) {
+      console.log('[Scan] No agents found – fetching debug metadata...');
       const debug = await debugOrgMetadata(conn);
       return NextResponse.json({ ...report, debug });
     }
 
     return NextResponse.json(report);
   } catch (error) {
-    console.error('Analysis error:', error);
+    console.error('[Scan] Error after', ((Date.now() - start) / 1000).toFixed(1), 's:', error);
     const message = error instanceof Error ? error.message : 'Analysis failed';
     const stack = error instanceof Error ? error.stack : undefined;
     console.error('Error stack:', stack);
 
     if (message.includes('INVALID_SESSION') || message.includes('Session expired')) {
-      return NextResponse.json({ error: 'Session expired. Please log in again.' }, { status: 401 });
+      return jsonError('Session expired. Please log in again.', 401);
     }
-    return NextResponse.json({ error: message, stack }, { status: 500 });
+    return jsonError(message, 500, { stack });
   }
 }

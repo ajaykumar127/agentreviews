@@ -1,15 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { decryptSession, getConnection } from '@/lib/salesforce/connection';
+import { NextRequest } from 'next/server';
+import { getAuthenticatedConnection, jsonError, jsonSuccess } from '@/lib/api';
 
 export async function POST(request: NextRequest) {
-  try {
-    const sessionCookie = request.cookies.get('sf_session')?.value;
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
+  const auth = getAuthenticatedConnection(request);
+  if (!auth.ok) return auth.response;
+  const conn = auth.conn;
 
-    const session = decryptSession(sessionCookie);
-    const conn = getConnection(session);
+  try {
 
     // Test different object names for Agentforce agents
     const objectsToTest = [
@@ -84,13 +81,12 @@ export async function POST(request: NextRequest) {
       console.error('Failed to describe global:', error);
     }
 
-    return NextResponse.json({
+    return jsonSuccess({
       queryResults: results,
       availableObjects: describeResults,
-      successfulObjects: results.filter(r => r.status === 'SUCCESS')
+      successfulObjects: results.filter((r) => r.status === 'SUCCESS'),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Debug failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonError(error instanceof Error ? error.message : 'Debug failed', 500);
   }
 }

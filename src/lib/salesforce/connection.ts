@@ -17,18 +17,19 @@ interface OAuthTokenResponse {
 const SF_CLIENT_ID = process.env.SALESFORCE_CLIENT_ID || 'PlatformCLI';
 const SF_CLIENT_SECRET = process.env.SALESFORCE_CLIENT_SECRET;
 
-// Get redirect URI dynamically
+// Get redirect URI dynamically. Must match the Connected App's Callback URL in Salesforce exactly.
 export function getRedirectUri(baseUrl?: string): string {
-  // If baseUrl provided, use it
+  // Prefer explicit app URL so OAuth always redirects back to this app, not the org
+  const canonical = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '');
+  if (canonical) {
+    return `${canonical}/OauthRedirect`;
+  }
   if (baseUrl) {
-    return `${baseUrl}/OauthRedirect`;
+    const url = baseUrl.replace(/\/$/, '');
+    return `${url}/OauthRedirect`;
   }
-  // Use environment variable if set
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return `${process.env.NEXT_PUBLIC_APP_URL}/OauthRedirect`;
-  }
-  // Default to localhost for development
-  return 'http://localhost:1717/OauthRedirect';
+  const port = process.env.PORT || '3002';
+  return `http://localhost:${port}/OauthRedirect`;
 }
 
 export function getOAuthAuthorizeUrl(loginUrl: string, baseUrl?: string): string {

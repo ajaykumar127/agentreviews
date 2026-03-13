@@ -28,7 +28,8 @@ function OAuthCallbackContent() {
         const data = await res.json();
         if (data.success) {
           setStatus('Login successful! Redirecting...');
-          router.push('/dashboard');
+          // Full navigation to our app's dashboard so we stay in the analyzer, not the org
+          window.location.replace('/dashboard');
         } else {
           setError(data.error || 'Failed to complete authentication');
         }

@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, AlertCircle, Clock, Settings, Sliders, TestTube, Rocket, Activity } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Clock, Settings, Sliders, TestTube, Rocket, Activity, Code } from 'lucide-react';
 import type { AgentReport, Finding, ReviewStage } from '@/lib/analysis/types';
 
 interface LifecycleTimelineProps {
@@ -51,13 +51,19 @@ const STAGE_CONFIG: Record<ReviewStage, {
     color: 'indigo',
     description: 'Data integration and grounding',
   },
+  apex: {
+    label: 'Apex',
+    icon: Code,
+    color: 'amber',
+    description: 'Apex best practices and Agentforce actions',
+  },
 };
 
 export default function LifecycleTimeline({ agent, selectedStage, onStageSelect }: LifecycleTimelineProps) {
   const { stageScores, findings } = agent;
 
   const getStageStatus = (stage: ReviewStage) => {
-    const score = stageScores[stage];
+    const score = stageScores[stage] ?? 100;
     const stageFindings = findings.filter(f => f.stage === stage);
     const critical = stageFindings.filter(f => f.severity === 'critical').length;
     const warnings = stageFindings.filter(f => f.severity === 'warning').length;
@@ -84,7 +90,7 @@ export default function LifecycleTimeline({ agent, selectedStage, onStageSelect 
           {stages.map((stageKey, index) => {
             const config = STAGE_CONFIG[stageKey];
             const Icon = config.icon;
-            const score = stageScores[stageKey];
+            const score = stageScores[stageKey] ?? 100;
             const status = getStageStatus(stageKey);
             const StatusIcon = status.icon;
             const isSelected = selectedStage === stageKey;

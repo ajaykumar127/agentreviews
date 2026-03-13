@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, Sliders, TestTube, Rocket, Activity, Database } from 'lucide-react';
+import { Settings, Sliders, TestTube, Rocket, Activity, Database, Code } from 'lucide-react';
 import type { ReviewStage } from '@/lib/analysis/types';
 
 interface LifecycleTabsProps {
@@ -12,6 +12,7 @@ interface LifecycleTabsProps {
     deploy: number;
     monitor: number;
     data: number;
+    apex?: number;
   };
 }
 
@@ -57,6 +58,12 @@ const STAGE_CONFIG: Record<ReviewStage, {
     color: 'cyan',
     description: 'Data Cloud configuration and grounding',
   },
+  apex: {
+    label: 'Apex',
+    icon: Code,
+    color: 'amber',
+    description: 'Apex best practices and Agentforce action quality',
+  },
 };
 
 export default function LifecycleTabs({ selectedStage, onStageSelect, stageScores }: LifecycleTabsProps) {
@@ -73,17 +80,20 @@ export default function LifecycleTabs({ selectedStage, onStageSelect, stageScore
           }`}
         >
           <span>All Stages</span>
-          {stageScores && (
-            <span className={`text-xs px-2 py-0.5 rounded-full ${
-              selectedStage === 'all'
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 text-gray-700'
-            }`}>
-              {Math.round(
-                (stageScores.designSetup + stageScores.configuration + stageScores.test + stageScores.deploy + stageScores.monitor + stageScores.data) / 6
-              )}
-            </span>
-          )}
+          {stageScores && (() => {
+            const stages = [stageScores.designSetup, stageScores.configuration, stageScores.test, stageScores.deploy, stageScores.monitor, stageScores.data];
+            if (stageScores.apex != null) stages.push(stageScores.apex);
+            const avg = stages.reduce((a, b) => a + b, 0) / stages.length;
+            return (
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                selectedStage === 'all'
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-gray-100 text-gray-700'
+              }`}>
+                {Math.round(avg)}
+              </span>
+            );
+          })()}
         </button>
 
         {/* Lifecycle Stage Tabs */}
